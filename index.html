@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Pivot App (HTML + jQuery + OSS)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- jQuery + jQuery UI (required by PivotTable.js) -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+  <!-- PivotTable.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
+
+  <!-- Parsers -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.2/xlsx.full.min.js"></script>
+
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --ink:#e5e7eb; --muted:#9ca3af; --accent:#22c55e; }
+    body { margin:0; font:14px/1.35 system-ui,Segoe UI,Roboto,Arial; color:var(--ink); background:var(--bg); }
+    header { display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid #222; }
+    header h1 { font-size:16px; margin:0; font-weight:700; }
+    .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-left:auto; }
+    .btn { background:#1f2937; color:var(--ink); border:1px solid #374151; padding:8px 12px; border-radius:8px; cursor:pointer; }
+    .btn:hover { border-color:#475569; }
+    .btn.primary { background:var(--accent); border-color:var(--accent); color:#04210e; font-weight:700; }
+    .chip { padding:4px 8px; background:#0b1220; border:1px dashed #334155; border-radius:8px; color:var(--muted); }
+    main { display:grid; grid-template-columns: 280px 1fr; gap:14px; padding:16px; }
+    aside { background:var(--card); border:1px solid #1f2937; border-radius:12px; padding:14px; }
+    .panel { background:var(--card); border:1px solid #1f2937; border-radius:12px; padding:12px; }
+    .hint { color:var(--muted); font-size:12px; }
+    #output { background:#0b1220; border:1px solid #1f2937; border-radius:12px; padding:10px; min-height:520px; }
+    .pvtUi { color:#111 !important; } /* keep pivot UI readable */
+    .footer { color:var(--muted); font-size:12px; padding:8px 16px 16px; }
+    input[type="file"] { display:none; }
+    label.file { cursor:pointer; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Pivot Table (Open‑Source, Browser‑Only)</h1>
+  <span class="chip" id="datasetName">No dataset loaded</span>
+  <div class="toolbar">
+    <label class="btn" for="fileInput">📄 Upload CSV/XLSX</label>
+    <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
+    <button class="btn" id="loadSample">Load Sample</button>
+    <button class="btn" id="saveView">Save View</button>
+    <button class="btn" id="loadView">Load View</button>
+    <button class="btn" id="resetView">Reset</button>
+    <button class="btn primary" id="exportCsv">Export Pivot CSV</button>
+  </div>
+</header>
+
+<main>
+  <!-- Left sidebar: quick tips -->
+  <aside>
+    <h3 style="margin:0 0 8px">How it works</h3>
+    <ol class="hint">
+      <li>Upload CSV/XLSX or load sample.</li>
+      <li>Drag fields into <b>Rows</b>, <b>Columns</b>, <b>Values</b>, <b>Filters</b>.</li>
+      <li>Change aggregator (Count, Sum, Avg, …).</li>
+      <li>Export the current pivot as CSV.</li>
+    </ol>
+    <hr style="border-color:#1f2937">
+    <p class="hint">Date columns auto‑create <b>Year</b> & <b>Month</b> derived fields.</p>
+    <p class="hint">Your saved view is stored in <code>localStorage</code>.</p>
+  </aside>
+
+  <!-- Right: pivot UI -->
+  <section class="panel">
+    <div id="output"></div>
+  </section>
+</main>
+
+<div class="footer">Built with jQuery, PivotTable.js, Papa Parse, and SheetJS (all MIT/open‑source).</div>
+
+<script>
+  // -------------------- helpers --------------------
+  const $out = $("#output");
+  let currentData = [];
+  let currentName = "No dataset loaded";
+
+  function isLikelyDate(v) {
+    if (v instanceof Date) return true;
+    if (typeof v !== "string") return false;
+    // ISO or dd/mm/yyyy-ish
+    return /\d{4}-\d{1,2}-\d{1,2}/.test(v) || /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(v);
+  }
+
+  function toDate(v) {
+    if (v instanceof Date) return v;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Build derived attributes for date columns (Year, Month)
+  function buildDerivedAttributes(data) {
+    const derived = {};
+    if (!data.length) return derived;
+    const sample = data[0];
+    Object.keys(sample).forEach(col => {
+      // sample few values to decide
+      let dateHits = 0, trials = 0;
+      for (let i=0; i < Math.min(25, data.length); i++) {
+        const v = data[i][col];
+        if (v === null || v === undefined || v === "") continue;
+        trials++;
+        if (isLikelyDate(v)) dateHits++;
+      }
+      if (trials > 0 && dateHits / trials >= 0.5) {
+        // Add Year and Month derived fields
+        derived[`${col} (Year)`] = r => {
+          const d = toDate(r[col]); return d ? d.getFullYear() : "";
+        };
+        derived[`${col} (Month)`] = r => {
+          const d = toDate(r[col]); return d ? (d.getMonth()+1).toString().padStart(2,"0") : "";
+        };
+      }
+    });
+    return derived;
+  }
+
+  function renderPivot(data, name="Dataset") {
+    currentData = data;
+    currentName = name;
+    $("#datasetName").text(name);
+
+    const der = buildDerivedAttributes(data);
+    const utils = $.pivotUtilities;
+    const renderers = utils.renderers;           // table & heatmap renderers
+    const aggregators = utils.aggregators;
+
+    // destroy previous
+    $out.empty();
+
+    // initial options
+    const opts = {
+      renderers,
+      aggregators,
+      aggregatorName: "Count",
+      rendererName: "Table",
+      derivedAttributes: der,
+      // You can preseed suggested fields here if you want:
+      rows: [], cols: [],
+      // sorters, hiddenAttributes, etc. available if needed
+    };
+
+    // create UI
+    $out.pivotUI(data, opts, true);
+
+    // store a copy for Save View
+    $out.data("pivot-ui-last-opts", opts);
+  }
+
+  function exportCurrentPivotAsCSV() {
+    const tbl = document.querySelector("#output .pvtTable");
+    if (!tbl) { alert("No pivot table rendered yet."); return; }
+    const rows = [];
+    for (const tr of tbl.querySelectorAll("tr")) {
+      const cells = [];
+      for (const td of tr.children) {
+        let text = (td.innerText || "").replace(/\n/g, " ").trim();
+        // handle commas/quotes
+        if (text.includes(",") || text.includes("\"")) {
+          text = `"${text.replace(/"/g, '""')}"`;
+        }
+        cells.push(text);
+      }
+      rows.push(cells.join(","));
+    }
+    const csv = rows.join("\n");
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (currentName.replace(/\.[a-zA-Z0-9]+$/, "") || "pivot") + "_pivot.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function saveView() {
+    const ui = $("#output");
+    const opts = ui.data("pivotUIOptions");
+    if (!opts) { alert("No pivot view to save."); return; }
+    // prune functions; keep serializable parts
+    const keep = (({ rows, cols, vals, exclusions, inclusions, unusedAttrsVertical, rendererName, aggregatorName, sorters, derivedAttributes }) =>
+      ({ rows, cols, vals, exclusions, inclusions, unusedAttrsVertical, rendererName, aggregatorName, derivedAttributes }))(opts);
+    localStorage.setItem("pivot-saved-view", JSON.stringify(keep));
+    alert("View saved locally.");
+  }
+
+  function loadView() {
+    const raw = localStorage.getItem("pivot-saved-view");
+    if (!raw) { alert("No saved view found."); return; }
+    const conf = JSON.parse(raw);
+    if (!currentData.length) { alert("Load a dataset first, then apply the saved view."); return; }
+    // rebuild with saved opts
+    const utils = $.pivotUtilities;
+    const base = {
+      renderers: utils.renderers,
+      aggregators: utils.aggregators,
+      rendererName: conf.rendererName || "Table",
+      aggregatorName: conf.aggregatorName || "Count",
+      rows: conf.rows || [],
+      cols: conf.cols || [],
+      derivedAttributes: conf.derivedAttributes || {},
+      // pivotUI expects `vals` for numeric aggregations
+      vals: conf.vals || []
+    };
+    $out.empty().pivotUI(currentData, base, true);
+  }
+
+  // -------------------- events --------------------
+  $("#fileInput").on("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const name = file.name;
+
+    if (/\.(xlsx|xls)$/i.test(name)) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const data = new Uint8Array(ev.target.result);
+        const wb = XLSX.read(data, { type: "array", cellDates: true, cellNF: false, cellText: false });
+        const firstSheet = wb.SheetNames[0];
+        const ws = wb.Sheets[firstSheet];
+        const json = XLSX.utils.sheet_to_json(ws, { defval: null }); // array of objects
+        renderPivot(json, name);
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (/\.csv$/i.test(name)) {
+      Papa.parse(file, {
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: (res) => {
+          renderPivot(res.data, name);
+        },
+        error: (err) => alert("CSV parse error: " + err.message)
+      });
+    } else {
+      alert("Unsupported file type. Please upload .csv or .xlsx");
+    }
+  });
+
+  $("#exportCsv").on("click", exportCurrentPivotAsCSV);
+  $("#saveView").on("click", saveView);
+  $("#loadView").on("click", loadView);
+  $("#resetView").on("click", () => { if (!currentData.length) return; renderPivot(currentData, currentName); });
+
+  // A tiny sample for quick testing
+  $("#loadSample").on("click", () => {
+    const sample = [
+      { City:"Visakhapatnam", Hub:"VIZ-NAD-T2", LOB:"bbnow", Orders:12, Revenue:5900, Date:"2025-07-01" },
+      { City:"Visakhapatnam", Hub:"VIZ-NAD-T2", LOB:"bbnow", Orders:17, Revenue:7200, Date:"2025-07-02" },
+      { City:"Hyderabad",     Hub:"HYD-Madhapur", LOB:"bbnow", Orders:22, Revenue:9100, Date:"2025-07-01" },
+      { City:"Hyderabad",     Hub:"HYD-Madhapur", LOB:"bbdaily", Orders:15, Revenue:4300, Date:"2025-07-03" },
+      { City:"Vizianagaram",  Hub:"VIZ-Gurudwara-T2", LOB:"bbnow", Orders:11, Revenue:3100, Date:"2025-07-02" },
+    ];
+    renderPivot(sample, "sample.csv");
+  });
+
+  // Boot with empty UI
+  $(function(){ $out.html('<div class="hint" style="padding:16px;color:#cbd5e1">Upload a CSV/XLSX or click <b>Load Sample</b> to start.</div>'); });
+</script>
+</body>
+</html>
