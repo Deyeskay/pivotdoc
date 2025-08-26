@@ -1,405 +1,475 @@
 <!doctype html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
 <head>
-<meta charset="utf-8" />
-<title>Pivot App – Responsive + Touch</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>Pivot App – Bootstrap 5 Dark</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<!-- jQuery + jQuery UI -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<!-- Touch support for jQuery UI drag/drop -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
+  <!-- jQuery + jQuery UI (required by PivotTable drag/drop) -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
-<!-- PivotTable.js -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
+  <!-- Touch support for jQuery UI drag/drop -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
 
-<!-- Parsers -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.2/xlsx.full.min.js"></script>
+  <!-- PivotTable.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
+
+  <!-- Parsers -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.2/xlsx.full.min.js"></script>
 
 <style>
-:root { --bg:#0f172a; --card:#111827; --ink:#e5e7eb; --muted:#9ca3af; --accent:#22c55e; }
-*{box-sizing:border-box}
-body{margin:0;font:14px/1.35 system-ui,Segoe UI,Roboto,Arial;color:var(--ink);background:var(--bg)}
-header{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #1f2937;flex-wrap:wrap}
-h1{margin:0;font-size:16px;font-weight:700}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
-.btn{background:#1f2937;color:var(--ink);border:1px solid #374151;padding:8px 12px;border-radius:10px;cursor:pointer}
-.btn:hover{border-color:#4b5563}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#05220e;font-weight:700}
-.chip{padding:4px 8px;background:#0b1220;border:1px dashed #334155;border-radius:8px;color:var(--muted)}
-main{display:grid;grid-template-columns:280px 1fr;gap:14px;padding:14px}
-aside,.panel{background:var(--card);border:1px solid #1f2937;border-radius:12px;padding:12px}
-#output{background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:8px;min-height:520px;overflow:auto}
-.pvtUi{color:#111 !important} /* keep pivot UI readable */
-.footer{color:var(--muted);font-size:12px;padding:8px 14px 16px}
-input[type="file"]{display:none}
+  /* ---------- Base (desktop-first) ---------- */
+  #output .pvtUi { color: #111 !important; }     /* keep Pivot UI readable on dark */
+  #output { min-height: 520px; overflow: auto; }
+  .pivot-wrap { position: relative; }
 
-/* --- Mobile responsiveness --- */
-@media (max-width: 900px){
-  main{grid-template-columns:1fr}
-  aside{order:-1}
-  #output{min-height:420px}
-  .toolbar{width:100%;margin-left:0}
-}
-@media (max-width: 600px){
-  header{gap:8px}
-  .btn{padding:8px 10px;border-radius:8px}
-  .pvtAxisContainer,.pvtVals{min-height:44px} /* larger drop zones */
-  /* allow horizontal nav inside pivot UI on mobile */
-  #output{overflow:auto}
-}
+  /* Copy button floats above pivot controls on wide screens */
+  #copyPivotBtn { z-index: 1050; }
 
-/* Mobile Simple Builder panel (shown on touch or small width) */
-#mobileBuilder{display:none;gap:10px;flex-wrap:wrap;margin:10px 0}
-#mobileBuilder select{background:#0b1220;color:var(--ink);border:1px solid #334155;border-radius:8px;padding:8px;min-width:150px}
-#mobileBuilder .stack{display:flex;flex-direction:column;gap:6px;min-width:160px}
-#mobileToggle{display:none;margin-left:0}
-@media (max-width: 900px){
-  #mobileToggle{display:inline-block}
-}
+  /* ---------- Tablet (<= lg) tweaks ---------- */
+  @media (max-width: 991.98px) {
+    #output { min-height: 420px; }
+    /* Avoid overlap on smaller screens: make copy button flow inline */
+    #copyPivotBtn { position: static !important; width: 100%; margin-bottom: .5rem; }
+    .pivot-wrap { padding-top: 0; }
+  }
 
-.pivot-wrap { position: relative; }
-.copy-btn {
-  position: absolute; top: 8px; right: 12px; z-index: 20;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 10px; border-radius: 8px;
-  background: #1f2937; color: #e5e7eb; border: 1px solid #374151;
-  cursor: pointer; user-select: none;
-}
-.copy-btn:hover { border-color: #4b5563; }
-.copy-btn:active { transform: translateY(1px); }
-.copy-label { font-size: 12px; letter-spacing: .2px; }
+  /* ---------- Phone (<= md) layout ONLY ---------- */
+  @media (max-width: 767.98px) {
+    /* Stack toolbar buttons nicely (support both class patterns you might use) */
+    .navbar .d-flex.flex-wrap.gap-2.ms-3,
+    .toolbar-buttons {
+      display: grid !important;
+      grid-template-columns: 1fr;
+      gap: .5rem !important;
+      width: 100%;
+      margin-top: .5rem;
+    }
+    .navbar .d-flex.flex-wrap.gap-2.ms-3 .btn,
+    .toolbar-buttons .btn {
+      width: 100%;
+      justify-content: center;
+      margin-bottom: 0; /* gap handles spacing */
+    }
 
+    /* Mobile Builder toggle full width */
+    #mobileToggle { width: 100%; }
+
+    /* Hide specific toolbar buttons ONLY on phones */
+    #loadSample,
+    #saveView,
+    #loadView,
+	#mobileToggle,
+	#exportCsv,
+    #howWorks {
+      display: none !important;
+    }
+
+    /* Show ONLY the renderer area on phones:
+       - hide Unused + Rows containers (do NOT affect desktop)
+       - keep Columns/Values if you want; comment next line to keep them too */
+    #output .pvtAxisContainer.pvtUnused,
+    #output .pvtAxisContainer.pvtRows {
+      display: none !important;
+    }
+    /* If you also want to hide Columns on phones, uncomment:
+       #output .pvtAxisContainer.pvtHorizList { display:none !important; }
+    */
+
+    /* Make the outer Pivot UI table stack so renderer fills width */
+    #output > table.pvtUi {
+      width: 100% !important;
+      display: block !important;           /* break intrinsic layout of outer UI table */
+    }
+    #output > table.pvtUi > tbody,
+    #output > table.pvtUi > tbody > tr,
+    #output > table.pvtUi > tbody > tr > td {
+      display: block !important;           /* stack UI cells vertically */
+      width: 100% !important;
+    }
+
+    /* Ensure renderer area + final pivot result stretch full width */
+    #output .pvtRendererArea {
+      display: block !important;
+      width: 100% !important;
+    }
+    #output .pvtTable {
+      width: 100% !important;
+      table-layout: auto !important;
+    }
+
+    /* Put the Copy button above the table content */
+    #copyPivotBtn {
+      position: static !important;
+      width: 100%;
+      margin-bottom: .5rem;
+    }
+  }
 </style>
+
+  
+  
 </head>
 <body>
 
-<header>
-  <h1>Pivot Table (Responsive + Touch)</h1>
-  <span class="chip" id="datasetName">No dataset loaded</span>
+<!-- Top Navbar -->
+<nav class="navbar navbar-expand-lg border-bottom bg-body-tertiary">
+  <div class="container-fluid flex-wrap gap-2">
+    <a class="navbar-brand fw-bold" href="#">Pivot Table</a>
+    <span class="badge rounded-pill text-bg-secondary" id="datasetName">No dataset loaded</span>
 
-  <button class="btn" id="mobileToggle">📱 Mobile Builder</button>
+    <button class="btn btn-outline-primary d-lg-none" id="mobileToggle" type="button" data-bs-toggle="collapse" data-bs-target="#mobileBuilder" aria-expanded="false" aria-controls="mobileBuilder">📱 Mobile Builder</button>
 
-  <div class="toolbar">
-    <label class="btn" for="fileInput">📄 Upload CSV/XLSX</label>
-    <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
-    <button class="btn" id="loadSample">Load Sample</button>
-    <button class="btn" id="saveView">Save View</button>
-    <button class="btn" id="loadView">Load View</button>
-    <button class="btn" id="resetView">Reset</button>
-    <button class="btn primary" id="exportCsv">Export Pivot CSV</button>
+    <div class="d-flex flex-wrap gap-2 ms-lg-auto toolbar-buttons mt-2 mt-lg-0">
+      <label class="btn btn-outline-secondary mb-0" for="fileInput">📄 Open CSV/XLSX</label>
+      <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" hidden />
+      <button class="btn btn-outline-secondary" id="loadSample">Load Sample</button>
+      <button class="btn btn-outline-secondary" id="saveView">Save View</button>
+      <button class="btn btn-outline-secondary" id="loadView">Load View</button>
+      <button class="btn btn-outline-secondary" id="resetView">Reset</button>
+      <button class="btn btn-success fw-semibold" id="exportCsv">Export Pivot CSV</button>
+    </div>
   </div>
-</header>
+</nav>
 
-<main>
-  <aside>
-    <h3 style="margin:0 0 8px">How it works</h3>
-    <ol class="hint">
-      <li>Upload CSV/XLSX or load sample.</li>
-      <li><b>Desktop:</b> drag fields into Rows/Cols/Values/Filters.</li>
-      <li><b>Mobile:</b> tap <b>Mobile Builder</b> to select fields (no drag required).</li>
-      <li>Export the current pivot as CSV.</li>
-    </ol>
-    <p class="hint">Date columns auto‑create <b>Year</b> & <b>Month</b> derived fields.</p>
-  </aside>
-
-  <section class="panel">
-    <!-- Mobile Simple Builder (appears on small screens or when toggled) -->
-    <div id="mobileBuilder">
-      <div class="stack">
-        <label>Rows</label>
-        <select id="rowsSel" multiple size="4"></select>
-      </div>
-      <div class="stack">
-        <label>Columns</label>
-        <select id="colsSel" multiple size="4"></select>
-      </div>
-      <div class="stack">
-        <label>Values</label>
-        <select id="valsSel" multiple size="4"></select>
-      </div>
-      <div class="stack">
-        <label>Filters</label>
-        <select id="filtersSel" multiple size="4"></select>
-      </div>
-      <div class="stack" style="justify-content:flex-end">
-        <label>&nbsp;</label>
-        <button class="btn primary" id="applyMobile">Apply</button>
+<!-- Main Content -->
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <div class="col-12 col-lg-3" id="howWorks">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title mb-2">How it works</h5>
+          <ol class="small mb-2">
+            <li>Open CSV/XLSX or load sample.</li>
+            <li><b>Desktop:</b> drag fields into Rows/Cols/Values/Filters.</li>
+            <li><b>Mobile:</b> tap <b>Mobile Builder</b> (no drag required).</li>
+            <li>Export the current pivot as CSV.</li>
+          </ol>
+          <p class="text-secondary small mb-0">Date columns auto‑create <b>Year</b> &amp; <b>Month</b> derived fields.</p>
+        </div>
       </div>
     </div>
 
-	<div class="pivot-wrap">
-    <button id="copyPivotBtn" class="copy-btn" title="Copy pivot to clipboard" aria-label="Copy pivot">
-      <!-- simple SVG clipboard icon -->
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path d="M9 2h6a2 2 0 0 1 2 2h1a2 2 0 0 1 2 2v12a2
-                 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1a2
-                 2 0 0 1 2-2zm0 2v1h6V4H9z" fill="currentColor"/>
-      </svg>
-      <span class="copy-label">Copy</span>
-    </button>
-    <div id="output"></div>
-	</div>
-   
-  </section>
-</main>
+    <div class="col-12 col-lg-9">
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="collapse" id="mobileBuilder">
+            <div class="row g-3">
+              <div class="col-6 col-md-6 col-lg-3">
+                <label class="form-label">Rows</label>
+                <select id="rowsSel" class="form-select" multiple size="6"></select>
+              </div>
+              <div class="col-6 col-md-6 col-lg-3">
+                <label class="form-label">Columns</label>
+                <select id="colsSel" class="form-select" multiple size="6"></select>
+              </div>
+              <div class="col-6 col-md-6 col-lg-3">
+                <label class="form-label">Values</label>
+                <select id="valsSel" class="form-select" multiple size="6"></select>
+              </div>
+              <div class="col-6 col-md-6 col-lg-3">
+                <label class="form-label">Filters</label>
+                <select id="filtersSel" class="form-select" multiple size="6"></select>
+              </div>
+              <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-success fw-semibold" id="applyMobile">Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-<div class="footer">Open‑source stack: PivotTable.js, jQuery UI (+Touch‑Punch), Papa Parse, SheetJS.</div>
+      <div class="card">
+        <div class="card-body">
+          <div class="pivot-wrap">
+            <button id="copyPivotBtn" class="btn btn-outline-light" title="Copy pivot to clipboard" aria-label="Copy pivot">
+              <span class="me-1">📋</span> Copy
+            </button>
+            <div id="output" class="table-responsive mt-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-secondary small pt-3">Open‑source stack: PivotTable.js, jQuery UI (+Touch‑Punch), Papa Parse, SheetJS, Bootstrap 5.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Keep all the same JS from before here -->
+ 
+
 
 <script>
-const $out = $("#output");
-let currentData = [];
-let currentName = "No dataset loaded";
-let derivedAttrs = {};
-let lastOpts = null;
+  const $out = $("#output");
+  let currentData = [];
+  let currentName = "No dataset loaded";
+  let derivedAttrs = {};
+  let lastOpts = null;
 
-// --- touch / mobile detection ---
-const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-if (isTouch || window.innerWidth < 900) { $("#mobileToggle").show(); }
-
-$("#mobileToggle").on("click", () => {
-  $("#mobileBuilder").slideToggle(120);
-});
-
-function isLikelyDate(v){
-  if (v instanceof Date) return true;
-  if (typeof v !== "string") return false;
-  return /\d{4}-\d{1,2}-\d{1,2}/.test(v) || /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(v);
-}
-function toDate(v){ if (v instanceof Date) return v; const d=new Date(v); return isNaN(d)?null:d; }
-
-function buildDerivedAttributes(data){
-  const derived = {};
-  if (!data.length) return derived;
-  const keys = Object.keys(data[0]||{});
-  for (const col of keys){
-    let hits=0,tr=0;
-    for (let i=0;i<Math.min(30,data.length);i++){
-      const v=data[i][col]; if (v==null || v==="") continue; tr++; if (isLikelyDate(v)) hits++;
-    }
-    if (tr>0 && hits/tr>=0.5){
-      derived[`${col} (Year)`] = r => { const d=toDate(r[col]); return d?d.getFullYear():""; };
-      derived[`${col} (Month)`] = r => { const d=toDate(r[col]); return d?(d.getMonth()+1+"").padStart(2,"0"):""; };
-    }
+  // Show Mobile Builder button only when touch or small width
+  const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (!(isTouch || window.innerWidth < 992)) {
+    // On desktop, keep builder collapsed control hidden but available via button on navbar (d-lg-none)
   }
-  return derived;
-}
 
-function fillMobileSelectors(fields){
-  const $r=$("#rowsSel"),$c=$("#colsSel"),$v=$("#valsSel"),$f=$("#filtersSel");
-  const opts = fields.map(f=>`<option value="${f}">${f}</option>`).join("");
-  $r.html(opts); $c.html(opts); $v.html(opts); $f.html(opts);
-}
+  // Toggle handled by Bootstrap's data-bs attributes
 
-function getMobileConfig(){
-  const rows=[...$("#rowsSel")[0].selectedOptions].map(o=>o.value);
-  const cols=[...$("#colsSel")[0].selectedOptions].map(o=>o.value);
-  const vals=[...$("#valsSel")[0].selectedOptions].map(o=>o.value);
-  const filters=[...$("#filtersSel")[0].selectedOptions].map(o=>o.value);
-  return {rows,cols,vals,filters};
-}
-
-function renderPivot(data,name="Dataset", seed){
-  currentData = data; currentName = name;
-  $("#datasetName").text(name);
-  derivedAttrs = buildDerivedAttributes(data);
-
-  const utils = $.pivotUtilities;
-  const renderers = utils.renderers;
-  const aggregators = utils.aggregators;
-
-  // prepare mobile selects
-  const baseFields = Object.keys(data[0]||{});
-  const derivedFields = Object.keys(derivedAttrs);
-  fillMobileSelectors([...baseFields, ...derivedFields]);
-
-  // default / or seed from saved config
-  const opts = Object.assign({
-    renderers,
-    aggregators,
-    aggregatorName: "Count",
-    rendererName: "Table",
-    derivedAttributes: derivedAttrs,
-    rows: [], cols: []
-  }, seed || {});
-
-  $out.empty().pivotUI(data, opts, true);
-  lastOpts = opts;
-}
-
-function reRenderWithMobile(){
-  if (!currentData.length) return;
-  const conf = getMobileConfig();
-  const base = {
-    renderers: $.pivotUtilities.renderers,
-    aggregators: $.pivotUtilities.aggregators,
-    rendererName: "Table",
-    aggregatorName: "Count",
-    derivedAttributes: derivedAttrs,
-    rows: conf.rows, cols: conf.cols, vals: conf.vals
-  };
-  $out.empty().pivotUI(currentData, base, true);
-}
-
-function exportCurrentPivotAsCSV(){
-  const tbl = document.querySelector("#output .pvtTable");
-  if (!tbl){ alert("No pivot table rendered yet."); return; }
-  const rows=[];
-  for (const tr of tbl.querySelectorAll("tr")){
-    const cells=[];
-    for (const td of tr.children){
-      let t=(td.innerText||"").replace(/\n/g," ").trim();
-      if (t.includes(",")||t.includes("\"")) t=`"${t.replace(/"/g,'""')}"`;
-      cells.push(t);
-    }
-    rows.push(cells.join(","));
+  function isLikelyDate(v){
+    if (v instanceof Date) return true;
+    if (typeof v !== "string") return false;
+    return /\d{4}-\d{1,2}-\d{1,2}/.test(v) || /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(v);
   }
-  const blob=new Blob([rows.join("\n")],{type:"text/csv;charset=utf-8"});
-  const url=URL.createObjectURL(blob); const a=document.createElement("a");
-  a.href=url; a.download=(currentName.replace(/\.[a-z0-9]+$/i,"")||"pivot")+"_pivot.csv";
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-}
+  function toDate(v){ if (v instanceof Date) return v; const d=new Date(v); return isNaN(d)?null:d; }
 
-function saveView(){
-  const ui = $("#output");
-  const opts = ui.data("pivotUIOptions");
-  if (!opts){ alert("No pivot view to save."); return; }
-  const keep = (({ rows, cols, vals, rendererName, aggregatorName, derivedAttributes }) =>
-    ({ rows, cols, vals, rendererName, aggregatorName, derivedAttributes }))(opts);
-  localStorage.setItem("pivot-saved-view", JSON.stringify(keep));
-  alert("View saved.");
-}
-function loadView(){
-  const raw = localStorage.getItem("pivot-saved-view");
-  if (!raw){ alert("No saved view."); return; }
-  const conf = JSON.parse(raw);
-  if (!currentData.length){ alert("Load a dataset first."); return; }
-  renderPivot(currentData, currentName, conf);
-  // also reflect in mobile selects
-  $("#rowsSel option, #colsSel option, #valsSel option, #filtersSel option").prop("selected", false);
-  (conf.rows||[]).forEach(v=>$("#rowsSel option[value='"+v.replaceAll("'","\\'")+"']").prop("selected",true));
-  (conf.cols||[]).forEach(v=>$("#colsSel option[value='"+v.replaceAll("'","\\'")+"']").prop("selected",true));
-  (conf.vals||[]).forEach(v=>$("#valsSel option[value='"+v.replaceAll("'","\\'")+"']").prop("selected",true));
-}
+  function buildDerivedAttributes(data){
+    const derived = {};
+    if (!data.length) return derived;
+    const keys = Object.keys(data[0]||{});
+    for (const col of keys){
+      let hits=0,tr=0;
+      for (let i=0;i<Math.min(30,data.length);i++){
+        const val=data[i][col]; if (val==null || val === "") continue; tr++; if (isLikelyDate(val)) hits++;
+      }
+      if (tr>0 && hits/tr>=0.5){
+        derived[`${col} (Year)`] = r => { const d=toDate(r[col]); return d?d.getFullYear():""; };
+        derived[`${col} (Month)`] = r => { const d=toDate(r[col]); return d?(String(d.getMonth()+1).padStart(2,"0")):""; };
+      }
+    }
+    return derived;
+  }
 
-$("#applyMobile").on("click", reRenderWithMobile);
+  function fillMobileSelectors(fields){
+    const $r=$("#rowsSel"),$c=$("#colsSel"),$v=$("#valsSel"),$f=$("#filtersSel");
+    const opts = fields.map(f=>`<option value="${f}">${f}</option>`).join("");
+    $r.html(opts); $c.html(opts); $v.html(opts); $f.html(opts);
+  }
 
-/* ---------- file handling ---------- */
-$("#fileInput").on("change", (e)=>{
-  const file=e.target.files?.[0]; if (!file) return;
-  const name=file.name;
-  if (/\.(xlsx|xls)$/i.test(name)){
-    const r=new FileReader();
-    r.onload=ev=>{
-      const data=new Uint8Array(ev.target.result);
-      const wb=XLSX.read(data,{type:"array",cellDates:true,cellNF:false,cellText:false});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const json=XLSX.utils.sheet_to_json(ws,{defval:null});
-      renderPivot(json,name);
+  function getMobileConfig(){
+    const rows=[...$("#rowsSel")[0].selectedOptions].map(o=>o.value);
+    const cols=[...$("#colsSel")[0].selectedOptions].map(o=>o.value);
+    const vals=[...$("#valsSel")[0].selectedOptions].map(o=>o.value);
+    const filters=[...$("#filtersSel")[0].selectedOptions].map(o=>o.value);
+    return {rows,cols,vals,filters};
+  }
+
+  function renderPivot(data,name="Dataset", seed){
+    currentData = data; currentName = name;
+    $("#datasetName").text(name);
+    derivedAttrs = buildDerivedAttributes(data);
+
+    const utils = $.pivotUtilities;
+    const renderers = utils.renderers;
+    const aggregators = utils.aggregators;
+
+    const baseFields = Object.keys(data[0]||{});
+    const derivedFields = Object.keys(derivedAttrs);
+    fillMobileSelectors([...baseFields, ...derivedFields]);
+
+    const opts = Object.assign({
+      renderers,
+      aggregators,
+      aggregatorName: "Count",
+      rendererName: "Table",
+      derivedAttributes: derivedAttrs,
+      rows: [], cols: []
+    }, seed || {});
+
+    $out.empty().pivotUI(data, opts, true);
+
+	showMobileBuilderIfSmall();
+
+    lastOpts = opts;
+  }
+
+	function showMobileBuilderIfSmall() {
+	  // phone breakpoint to match your CSS (<= 767.98px)
+	  const isPhone = window.matchMedia('(max-width: 767.98px)').matches;
+	  if (!isPhone) return;
+
+	  const el = document.getElementById('mobileBuilder');
+	  if (!el) return;
+
+	  // Ensure the Bootstrap Collapse is shown (without toggling desktop states)
+	  const inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+	  if (!el.classList.contains('show')) inst.show();
+
+	  // Optional niceties
+	  setTimeout(() => document.getElementById('rowsSel')?.focus(), 150);
+	  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
+  function reRenderWithMobile(){
+    if (!currentData.length) return;
+    const conf = getMobileConfig();
+    const base = {
+      renderers: $.pivotUtilities.renderers,
+      aggregators: $.pivotUtilities.aggregators,
+      rendererName: "Table",
+      aggregatorName: "Count",
+      derivedAttributes: derivedAttrs,
+      rows: conf.rows, cols: conf.cols, vals: conf.vals
     };
-    r.readAsArrayBuffer(file);
-  } else if (/\.csv$/i.test(name)){
-    Papa.parse(file,{header:true,dynamicTyping:true,skipEmptyLines:true,
-      complete:(res)=>renderPivot(res.data,name),
-      error:(err)=>alert("CSV parse error: "+err.message)
-    });
-  } else { alert("Please upload .csv/.xlsx"); }
-});
-
-$("#exportCsv").on("click", exportCurrentPivotAsCSV);
-$("#saveView").on("click", saveView);
-$("#loadView").on("click", loadView);
-$("#resetView").on("click", ()=>{ if (!currentData.length) return; renderPivot(currentData, currentName, lastOpts); });
-
-$("#loadSample").on("click", ()=>{
-  const sample=[
-    { City:"Visakhapatnam", Hub:"VIZ-NAD-T2", LOB:"bbnow", Orders:12, Revenue:5900, Date:"2025-07-01" },
-    { City:"Visakhapatnam", Hub:"VIZ-NAD-T2", LOB:"bbnow", Orders:17, Revenue:7200, Date:"2025-07-02" },
-    { City:"Hyderabad", Hub:"HYD-Madhapur", LOB:"bbnow", Orders:22, Revenue:9100, Date:"2025-07-01" },
-    { City:"Hyderabad", Hub:"HYD-Madhapur", LOB:"bbdaily", Orders:15, Revenue:4300, Date:"2025-07-03" },
-    { City:"Vizianagaram", Hub:"VIZ-Gurudwara-T2", LOB:"bbnow", Orders:11, Revenue:3100, Date:"2025-07-02" }
-  ];
-  renderPivot(sample,"sample.csv");
-});
-
-// initial hint
-$out.html('<div style="padding:14px;color:#cbd5e1">Upload a CSV/XLSX or tap <b>Load Sample</b>. Use <b>Mobile Builder</b> on phones.</div>');
-
-
-// Convert a table to TSV (plain text) – keeps simple copy fallback
-function tableToTSV(tableEl) {
-  const rows = [];
-  for (const tr of tableEl.querySelectorAll("tr")) {
-    const cells = [];
-    for (const cell of tr.children) {
-      let t = (cell.innerText || "").replace(/\r?\n/g, " ").trim();
-      // guard tabs/quotes
-      if (t.includes("\t")) t = t.replace(/\t/g, " ");
-      cells.push(t);
-    }
-    rows.push(cells.join("\t"));
+    $out.empty().pivotUI(currentData, base, true);
   }
-  return rows.join("\n");
-}
 
-// Copy pivot table as HTML (preserves merged cells) + TSV (fallback)
-async function copyPivotTable() {
-  const tbl = document.querySelector("#output .pvtTable");
-  if (!tbl) { alert("No pivot table to copy."); return; }
+  function exportCurrentPivotAsCSV(){
+    const tbl = document.querySelector("#output .pvtTable");
+    if (!tbl){ alert("No pivot table rendered yet."); return; }
+    const rows=[];
+    for (const tr of tbl.querySelectorAll("tr")){
+      const cells=[];
+      for (const td of tr.children){
+        let t=(td.innerText||"").replace(/\n/g," ").trim();
+        if (t.includes(',')||t.includes('"')) t='"'+t.replace(/"/g,'""')+'"';
+        cells.push(t);
+      }
+      rows.push(cells.join(","));
+    }
+    const blob=new Blob([rows.join("\n")],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a");
+    a.href=url; a.download=(currentName.replace(/\.[a-z0-9]+$/i,"")||"pivot")+"_pivot.csv";
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
 
-  const html = tbl.outerHTML;       // Excel/Sheets will paste this nicely
-  const tsv  = tableToTSV(tbl);     // plain text fallback
+  function saveView(){
+    const ui = $("#output");
+    const opts = ui.data("pivotUIOptions");
+    if (!opts){ alert("No pivot view to save."); return; }
+    const keep = (({ rows, cols, vals, rendererName, aggregatorName, derivedAttributes }) =>
+      ({ rows, cols, vals, rendererName, aggregatorName, derivedAttributes }))(opts);
+    localStorage.setItem("pivot-saved-view", JSON.stringify(keep));
+    // Bootstrap toast-like feedback
+    showToast("View saved.");
+  }
+  function loadView(){
+    const raw = localStorage.getItem("pivot-saved-view");
+    if (!raw){ alert("No saved view."); return; }
+    const conf = JSON.parse(raw);
+    if (!currentData.length){ alert("Load a dataset first."); return; }
+    renderPivot(currentData, currentName, conf);
+    // reflect in mobile selects
+    $("#rowsSel option, #colsSel option, #valsSel option, #filtersSel option").prop("selected", false);
+    (conf.rows||[]).forEach(v=>$("#rowsSel option[value='"+v.replaceAll("'","\\'")+"']").prop("selected",true));
+    (conf.cols||[]).forEach(v=>$("#colsSel option[value='"+v.replaceAll("'","\\'")+"']").prop("selected",true));
+    (conf.vals||[]).forEach(v=>$("#valsSel option[value='"+v.replaceAll("'","\\'")+"']").prop("selected",true));
+  }
 
-  try {
-    if (navigator.clipboard && window.ClipboardItem) {
-      const item = new ClipboardItem({
-        "text/html": new Blob([html], { type: "text/html" }),
-        "text/plain": new Blob([tsv],  { type: "text/plain" })
+  $("#applyMobile").on("click", reRenderWithMobile);
+
+  // ---------- file handling ----------
+  $("#fileInput").on("change", (e)=>{
+    const file=e.target.files?.[0]; if (!file) return;
+    const name=file.name;
+    if (/\.(xlsx|xls)$/i.test(name)){
+      const r=new FileReader();
+      r.onload=ev=>{
+        const data=new Uint8Array(ev.target.result);
+        const wb=XLSX.read(data,{type:"array",cellDates:true,cellNF:false,cellText:false});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const json=XLSX.utils.sheet_to_json(ws,{defval:null});
+        renderPivot(json,name);
+      };
+      r.readAsArrayBuffer(file);
+    } else if (/\.csv$/i.test(name)){
+      Papa.parse(file,{header:true,dynamicTyping:true,skipEmptyLines:true,
+        complete:(res)=>renderPivot(res.data,name),
+        error:(err)=>alert("CSV parse error: "+err.message)
       });
-      await navigator.clipboard.write([item]);
-    } else if (navigator.clipboard?.writeText) {
-      // fallback: text only
-      await navigator.clipboard.writeText(tsv);
-    } else {
-      // legacy fallback: select and execCommand
-      const sel = window.getSelection();
-      const range = document.createRange();
-      range.selectNode(tbl);
-      sel.removeAllRanges();
-      sel.addRange(range);
-      document.execCommand("copy");
-      sel.removeAllRanges();
-    }
-    toastCopyOK(); // optional UX helper below
-  } catch (e) {
-    console.error(e);
-    alert("Copy failed. Try selecting the table and copying manually (Ctrl/Cmd+C).");
-  }
-}
-
-// Optional tiny toast
-function toastCopyOK() {
-  const msg = document.createElement("div");
-  msg.textContent = "Pivot copied to clipboard";
-  Object.assign(msg.style, {
-    position: "fixed", right: "14px", bottom: "14px", padding: "8px 12px",
-    background: "#16a34a", color: "#04120a", borderRadius: "10px",
-    fontWeight: "700", zIndex: 9999
+    } else { alert("Please upload .csv/.xlsx"); }
   });
-  document.body.appendChild(msg);
-  setTimeout(()=> msg.remove(), 1100);
-}
 
-// Wire up the button once the DOM is ready
-document.addEventListener("click", (e) => {
-  if (e.target.closest("#copyPivotBtn")) copyPivotTable();
-});
+  $("#exportCsv").on("click", exportCurrentPivotAsCSV);
+  $("#saveView").on("click", saveView);
+  $("#loadView").on("click", loadView);
+  $("#resetView").on("click", ()=>{ if (!currentData.length) return; renderPivot(currentData, currentName, lastOpts); });
 
+  $("#loadSample").on("click", ()=>{
+    const sample=[
+      { City:"Visakhapatnam", Hub:"VIZ-NAD-T2", LOB:"bbnow", Orders:12, Revenue:5900, Date:"2025-07-01" },
+      { City:"Visakhapatnam", Hub:"VIZ-NAD-T2", LOB:"bbnow", Orders:17, Revenue:7200, Date:"2025-07-02" },
+      { City:"Hyderabad", Hub:"HYD-Madhapur", LOB:"bbnow", Orders:22, Revenue:9100, Date:"2025-07-01" },
+      { City:"Hyderabad", Hub:"HYD-Madhapur", LOB:"bbdaily", Orders:15, Revenue:4300, Date:"2025-07-03" },
+      { City:"Vizianagaram", Hub:"VIZ-Gurudwara-T2", LOB:"bbnow", Orders:11, Revenue:3100, Date:"2025-07-02" }
+    ];
+    renderPivot(sample,"sample.csv");
+  });
+
+  // Initial hint
+  $out.html('<div class="text-secondary p-3">Upload a CSV/XLSX or click <b>Load Sample</b>. Use <b>Mobile Builder</b> on phones.</div>');
+
+  // Copy helpers
+  function tableToTSV(tableEl) {
+    const rows = [];
+    for (const tr of tableEl.querySelectorAll("tr")) {
+      const cells = [];
+      for (const cell of tr.children) {
+        let t = (cell.innerText || "").replace(/\r?\n/g, " ").trim();
+        if (t.includes("\t")) t = t.replace(/\t/g, " ");
+        cells.push(t);
+      }
+      rows.push(cells.join("\t"));
+    }
+    return rows.join("\n");
+  }
+
+  async function copyPivotTable() {
+    const tbl = document.querySelector("#output .pvtTable");
+    if (!tbl) { alert("No pivot table to copy."); return; }
+
+    const html = tbl.outerHTML;
+    const tsv  = tableToTSV(tbl);
+
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        const item = new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([tsv],  { type: "text/plain" })
+        });
+        await navigator.clipboard.write([item]);
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tsv);
+      } else {
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNode(tbl);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand("copy");
+        sel.removeAllRanges();
+      }
+      showToast("Pivot copied to clipboard");
+    } catch (e) {
+      console.error(e);
+      alert("Copy failed. Try selecting the table and copying manually (Ctrl/Cmd+C).");
+    }
+  }
+
+  function showToast(msg){
+    // Lightweight Bootstrap toast-like feedback
+    const wrap = document.createElement('div');
+    wrap.className = 'position-fixed bottom-0 end-0 p-3';
+    wrap.style.zIndex = 1080;
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-bg-success border-0 show';
+    toast.setAttribute('role','status');
+    toast.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>`;
+    wrap.appendChild(toast); document.body.appendChild(wrap);
+    setTimeout(()=> wrap.remove(), 1500);
+  }
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("#copyPivotBtn")) copyPivotTable();
+  });
 </script>
 </body>
 </html>
